@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Download, Calendar, Mail, Phone, MapPin,
   CreditCard, Shield, Clock, FileText, Edit2, AlertTriangle,
-  History, CheckCircle, XCircle, Ban, ShieldAlert, Plus
+  History, CheckCircle, XCircle, Ban, ShieldAlert, Plus,
+  Flag, UserSearch, ClipboardCheck, Zap
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -126,6 +127,15 @@ const MemberDetails = () => {
 
   if (!member) return null;
 
+  const getRiskColor = (risk) => {
+    switch (risk?.toLowerCase()) {
+      case 'critical': return 'text-rose-600 bg-rose-50 border-rose-100';
+      case 'high': return 'text-orange-600 bg-orange-50 border-orange-100';
+      case 'medium': return 'text-amber-600 bg-amber-50 border-amber-100';
+      default: return 'text-emerald-600 bg-emerald-50 border-emerald-100';
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -146,9 +156,10 @@ const MemberDetails = () => {
 
         <div className="flex flex-wrap gap-4 justify-center">
           <button
-            onClick={() => {
-              exportSingleMemberToPDF(member);
-              toast.success("Document generated");
+            onClick={async () => {
+              const toastId = toast.loading("Generating PDF...");
+              await exportSingleMemberToPDF(member);
+              toast.success("Document generated", { id: toastId });
             }}
             className="premium-button-secondary py-3 px-6"
           >
@@ -182,15 +193,6 @@ const MemberDetails = () => {
             </button>
           )}
 
-          {member.status === MEMBERSHIP_STATUS.PENDING && (
-            <button
-              onClick={() => handleStatusChange('Rejected', 'Admin manual rejection')}
-              className="premium-button-secondary border-rose-200 text-rose-600 hover:bg-rose-50 py-3 px-6"
-            >
-              <XCircle size={20} /> Reject Member
-            </button>
-          )}
-
           <button
             onClick={() => setIsEditModalOpen(true)}
             className="premium-button-primary py-3 px-6"
@@ -204,10 +206,10 @@ const MemberDetails = () => {
         {/* Profile Sidebar */}
         <div className="xl:col-span-4 space-y-8">
           <div className="premium-card p-8 text-center relative overflow-hidden">
-            <div className={`absolute top-0 left-0 w-full h-2 ${member.status === 'Active' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+            <div className={`absolute top-0 left-0 w-full h-2 ${getStatusColor(member.status)}`} />
 
             <div className="mx-auto mb-6 w-max relative">
-              <Avatar src={member.profileImage} name={member.fullName} size="xl" className="border-4 border-white shadow-xl" />
+              <Avatar src={member.profilePhoto || member.photoURL || member.profileImage} name={member.fullName} size="xl" className="border-4 border-white shadow-xl" />
               <div className="absolute bottom-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-lg border border-slate-50">
                 <div className={`w-4 h-4 rounded-full ${member.status === 'Active' ? 'bg-emerald-500 shadow-emerald-200 shadow-lg' : 'bg-slate-300'}`} />
               </div>
@@ -215,6 +217,17 @@ const MemberDetails = () => {
 
             <h2 className="text-2xl font-black text-slate-900 mb-1 truncate" title={member.fullName}>{member.fullName}</h2>
             <p className="text-slate-400 font-bold text-xs mb-4">{member.memberId}</p>
+
+            <div className="flex flex-wrap justify-center gap-2 mb-6">
+              <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${getStatusColor(member.status)}`}>
+                {member.status}
+              </span>
+              {member.standing && (
+                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${getRiskColor(member.standing)}`}>
+                  Standing: {member.standing}
+                </span>
+              )}
+            </div>
 
             <div className="flex flex-col gap-4 text-left border-t border-slate-100 pt-6">
               <div className="flex justify-between items-center">
@@ -241,41 +254,51 @@ const MemberDetails = () => {
             </div>
           </div>
 
-          <div className="premium-card p-6">
+          {/* Rules Engine Intelligence Card */}
+          <div className="premium-card p-6 border-l-4 border-l-brand-500">
             <h3 className="font-black text-slate-900 mb-4 flex items-center gap-2">
-              <Shield size={18} className="text-brand-600" />
-              Intelligence Score
+              <Zap size={18} className="text-brand-600" />
+              Maintenance Intelligence
             </h3>
             <div className="space-y-4">
-              {(() => {
-                const { score, label } = calculateMemberHealth(member, attendance, violations);
-                return (
-                  <>
-                    <div className="flex flex-col items-center justify-center py-4 bg-slate-50 rounded-2xl border border-slate-100">
-                      <span className={`text-5xl font-black mb-1 ${score > 70 ? 'text-emerald-600' : score > 40 ? 'text-amber-600' : 'text-rose-600'}`}>
-                        {score}
-                      </span>
-                      <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${getHealthColor(label)}`}>
-                        {label} Health
-                      </span>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Violation Points</span>
-                        <span className="text-sm font-black text-slate-900">{member.offenseCount || violations.reduce((sum, v) => sum + (v.points || 0), 0)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Attendance Rate</span>
-                        <span className="text-sm font-black text-emerald-600">
-                          {member.attendanceCount || attendance.length > 0
-                            ? Math.round(( (member.attendanceCount || attendance.filter(a => a.status === 'Present').length) / (member.attendanceCount ? 30 : attendance.length)) * 100)
-                            : 100}%
-                        </span>
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Attendance Risk</p>
+                  <p className={`text-xs font-black uppercase tracking-tight ${getRiskColor(member.attendanceRisk).split(' ')[0]}`}>
+                    {member.attendanceRisk || 'Low'}
+                  </p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Warning Level</p>
+                  <p className="text-xs font-black text-slate-900 uppercase tracking-tight">
+                    {member.warningLevel?.replace('_', ' ') || 'None'}
+                  </p>
+                </div>
+              </div>
+
+              {member.reviewStatus && (
+                <div className="p-4 bg-rose-50 rounded-xl border border-rose-100 flex items-center gap-3">
+                  <UserSearch className="text-rose-600" size={20} />
+                  <div>
+                    <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest">Review Status</p>
+                    <p className="text-sm font-black text-rose-900">{member.reviewStatus.replace('_', ' ').toUpperCase()}</p>
+                  </div>
+                </div>
+              )}
+
+              {member.maintenanceReason && (
+                <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
+                  <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Last System Action</p>
+                  <p className="text-xs font-bold text-amber-900 leading-relaxed italic">
+                    "{member.maintenanceReason.replace(/_/g, ' ')}"
+                  </p>
+                </div>
+              )}
+
+              <div className="pt-2 flex items-center justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                <span className="flex items-center gap-1"><Clock size={10} /> Evaluated:</span>
+                <span>{member.lastMaintenanceAt ? safeFormatDate(member.lastMaintenanceAt, 'MMM d, p') : 'Never'}</span>
+              </div>
             </div>
           </div>
         </div>

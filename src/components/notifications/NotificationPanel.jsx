@@ -2,35 +2,35 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, X, Check, Info, AlertTriangle, Clock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { getUserNotifications, markAsRead } from '../../services/notificationService';
+import { subscribeToUserNotifications, markAsRead } from '../../services/notificationService';
 import { formatDistanceToNow } from 'date-fns';
 
 const NotificationPanel = ({ isOpen, onClose, organizationId }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, loading: authLoading } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (isOpen && currentUser) {
-      const fetchNotifications = async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          const data = await getUserNotifications(organizationId || 'default', currentUser.uid); 
-          setNotifications(Array.isArray(data) ? data : []);
-        } catch (err) {
-          console.error(err);
-          if (err.code === 'failed-precondition' && err.message.includes('index')) {
-            setError('INDEX_REQUIRED');
-          }
-        } finally {
+    // Only subscribe when panel is open, auth is loaded, and we have a user
+    if (isOpen && !authLoading && currentUser) {
+      setLoading(true);
+      
+      const unsubscribe = subscribeToUserNotifications(
+        organizationId || 'default', 
+        currentUser.uid, 
+        (data) => {
+          setNotifications(data);
           setLoading(false);
+          setError(null);
         }
+      );
+
+      return () => {
+        unsubscribe();
       };
-      fetchNotifications();
     }
-  }, [isOpen, currentUser, organizationId]);
+  }, [isOpen, authLoading, currentUser, organizationId]);
 
   const handleMarkAsRead = async (id) => {
     try {

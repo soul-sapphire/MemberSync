@@ -2,6 +2,27 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { format } from 'date-fns';
 
+/**
+ * Helper to load an image from a URL and convert it to base64.
+ * Returns null if loading fails.
+ */
+const loadImageAsBase64 = async (url) => {
+  if (!url) return null;
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.warn("Failed to load image for PDF:", url, error);
+    return null;
+  }
+};
+
 export const exportMembersToPDF = (members, title = "Member Directory") => {
   const doc = new jsPDF();
   const dateStr = format(new Date(), 'PPP p');
@@ -92,7 +113,7 @@ export const exportMembersToPDF = (members, title = "Member Directory") => {
   doc.save(`MemberSync_Report_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
 };
 
-export const exportSingleMemberToPDF = (member) => {
+export const exportSingleMemberToPDF = async (member) => {
   const doc = new jsPDF();
   const dateStr = format(new Date(), 'PPP p');
 
@@ -100,6 +121,19 @@ export const exportSingleMemberToPDF = (member) => {
   doc.setFillColor(79, 70, 229);
   doc.rect(0, 0, 210, 50, 'F');
   
+  // Profile Photo if exists
+  const photoURL = member.profilePhoto || member.photoURL || member.profileImage;
+  if (photoURL) {
+    const base64Img = await loadImageAsBase64(photoURL);
+    if (base64Img) {
+      // Add a circular frame for the photo
+      doc.setDrawColor(255, 255, 255);
+      doc.setLineWidth(1);
+      doc.circle(180, 25, 15, 'S');
+      doc.addImage(base64Img, 'JPEG', 165, 10, 30, 30);
+    }
+  }
+
   doc.setFontSize(24);
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
@@ -172,7 +206,7 @@ export const exportSingleMemberToPDF = (member) => {
   doc.save(`Profile_${member.memberId || 'Member'}.pdf`);
 };
 
-export const exportMembershipCardToPDF = (member) => {
+export const exportMembershipCardToPDF = async (member) => {
   const doc = new jsPDF({
     orientation: 'landscape',
     unit: 'mm',
@@ -186,6 +220,19 @@ export const exportMembershipCardToPDF = (member) => {
   // Accents
   doc.setFillColor(79, 70, 229); // brand-600
   doc.circle(85.6, 0, 30, 'F');
+
+  // Profile Photo
+  const photoURL = member.profilePhoto || member.photoURL || member.profileImage;
+  if (photoURL) {
+    const base64Img = await loadImageAsBase64(photoURL);
+    if (base64Img) {
+      // Small rounded photo on the card
+      doc.setDrawColor(255, 255, 255);
+      doc.setLineWidth(0.5);
+      doc.addImage(base64Img, 'JPEG', 60, 10, 20, 20);
+      doc.rect(60, 10, 20, 20, 'S');
+    }
+  }
 
   // Text
   doc.setTextColor(255, 255, 255);

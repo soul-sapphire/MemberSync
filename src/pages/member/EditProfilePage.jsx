@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getMemberByUid, updateMember } from '../../services/memberService';
-import { uploadProfileImage } from '../../services/storageService';
+import { uploadMemberProfilePhoto } from '../../services/profilePhotoService';
 import toast from 'react-hot-toast';
 import Avatar from '../../components/ui/Avatar';
 import { Upload, Camera } from 'lucide-react';
@@ -25,7 +25,9 @@ const EditProfilePage = () => {
     interests: '',
     emergencyContactName: '',
     emergencyContactPhone: '',
+    profilePhoto: '',
     profileImage: '',
+    photoURL: '',
   });
 
   useEffect(() => {
@@ -45,9 +47,11 @@ const EditProfilePage = () => {
             interests: member.interests || '',
             emergencyContactName: member.emergencyContactName || '',
             emergencyContactPhone: member.emergencyContactPhone || '',
+            profilePhoto: member.profilePhoto || '',
             profileImage: member.profileImage || '',
+            photoURL: member.photoURL || '',
           });
-          setPreviewUrl(member.profileImage);
+          setPreviewUrl(member.profilePhoto || member.photoURL || member.profileImage);
         }
       } catch (error) {
         console.error(error);
@@ -63,9 +67,11 @@ const EditProfilePage = () => {
   };
 
   const handleImageChange = (e) => {
-    if (e.target.files[0]) {
-      setImageFile(e.target.files[0]);
-      setPreviewUrl(URL.createObjectURL(e.target.files[0]));
+    const file = e.target.files[0];
+    if (file) {
+      console.log("EditProfile: Image selected:", file);
+      setImageFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
     }
   };
 
@@ -74,21 +80,32 @@ const EditProfilePage = () => {
     setSaving(true);
     
     try {
-      let photoURL = formData.profileImage;
+      let finalPhotoURL = formData.profilePhoto || formData.photoURL || formData.profileImage;
       
       if (imageFile) {
-        toast.loading('Uploading image...', { id: 'upload' });
-        photoURL = await uploadProfileImage(currentUser.uid, imageFile);
+        console.log("EditProfile: Uploading image for UID:", currentUser.uid);
+        const toastId = toast.loading('Uploading image...', { id: 'upload' });
+        finalPhotoURL = await uploadMemberProfilePhoto(currentUser.uid, imageFile);
+        console.log("EditProfile: Upload result URL:", finalPhotoURL);
         toast.success('Image uploaded', { id: 'upload' });
       }
 
-      await updateMember(memberId, {
+      const updateData = {
         ...formData,
-        profileImage: photoURL
-      });
+        profilePhoto: finalPhotoURL,
+        photoURL: finalPhotoURL,
+        profileImage: finalPhotoURL
+      };
+
+      await updateMember(memberId, updateData);
+      
+      setFormData(updateData);
+      setPreviewUrl(finalPhotoURL);
+      setImageFile(null);
       
       toast.success('Profile updated successfully!');
     } catch (error) {
+      console.error("EditProfile: Save error:", error);
       toast.error('Failed to update profile');
       toast.dismiss('upload');
     } finally {
@@ -97,6 +114,8 @@ const EditProfilePage = () => {
   };
 
   if (loading) return <div className="flex justify-center p-10"><div className="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div></div>;
+
+  const currentPhoto = previewUrl || formData.profilePhoto || formData.photoURL || formData.profileImage || currentUser?.photoURL || "";
 
   return (
     <div className="max-w-4xl mx-auto premium-card p-8 bg-white">
@@ -107,7 +126,7 @@ const EditProfilePage = () => {
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="flex flex-col sm:flex-row items-center gap-8 mb-8">
           <div className="relative group">
-            <Avatar src={previewUrl} name={formData.fullName} size="xl" className="border-4 border-slate-100" />
+            <Avatar src={currentPhoto} name={formData.fullName} size="xl" className="border-4 border-slate-100" />
             <label className="absolute bottom-0 right-0 p-3 bg-brand-600 text-white rounded-full cursor-pointer hover:bg-brand-700 hover:scale-110 transition-all shadow-lg">
               <Camera size={20} />
               <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />

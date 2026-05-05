@@ -31,6 +31,7 @@ import ReportsPage from './pages/admin/ReportsPage';
 import AnnouncementsPage from './pages/admin/AnnouncementsPage';
 import SettingsPage from './pages/admin/SettingsPage';
 import AuditLogsPage from './pages/admin/AuditLogsPage';
+import AdminReviewTasksPage from './pages/admin/AdminReviewTasksPage';
 
 function App() {
   return (
@@ -86,6 +87,7 @@ function App() {
               <Route path="/admin/announcements" element={<AnnouncementsPage />} />
               <Route path="/admin/settings" element={<SettingsPage />} />
               <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
+              <Route path="/admin/review-tasks" element={<AdminReviewTasksPage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

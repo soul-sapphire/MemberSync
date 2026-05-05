@@ -5,32 +5,30 @@ import Avatar from '../ui/Avatar';
 import Dropdown from '../ui/Dropdown';
 import { LogOut, UserCircle, Menu, Bell, Crown, User } from 'lucide-react';
 import { logout } from '../../services/authService';
-import { getUserNotifications } from '../../services/notificationService';
+import { subscribeToUserNotifications } from '../../services/notificationService';
 import NotificationPanel from '../notifications/NotificationPanel';
 import toast from 'react-hot-toast';
 
 const Navbar = ({ onMenuClick, isAdmin }) => {
-  const { currentUser, userRole, organizationId } = useAuth();
+  const { currentUser, userRole, organizationId, loading: authLoading } = useAuth();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    if (currentUser && organizationId) {
-      const fetchCount = async () => {
-        try {
-          const data = await getUserNotifications(organizationId, currentUser.uid);
+    // Wait for auth to be fully loaded before subscribing
+    if (!authLoading && currentUser && organizationId) {
+      const unsubscribe = subscribeToUserNotifications(
+        organizationId, 
+        currentUser.uid, 
+        (data) => {
           if (Array.isArray(data)) {
             setUnreadCount(data.filter(n => !n.read).length);
           }
-        } catch (e) {
-          console.error("Nav notification fetch failed:", e);
         }
-      };
-      fetchCount();
-      const interval = setInterval(fetchCount, 60000);
-      return () => clearInterval(interval);
+      );
+      return () => unsubscribe();
     }
-  }, [currentUser, organizationId]);
+  }, [authLoading, currentUser, organizationId]);
 
   const handleLogout = async () => {
     try {
