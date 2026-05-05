@@ -98,19 +98,19 @@ const AdminDashboard = () => {
   const handleRunEngine = async (dryRun = false) => {
     try {
       setIsAutomating(true);
-      const toastId = toast.loading(dryRun ? 'Simulating rules engine...' : 'Running rules engine...');
+      const toastId = toast.loading(dryRun ? 'Simulating intelligence scan...' : 'Running intelligence scan...');
       
       const result = await runMembershipRulesEngineNow(organizationId, dryRun);
       
       if (dryRun) {
         toast.success(`Simulation complete! ${result.updated} members would be updated.`, { id: toastId });
       } else {
-        toast.success(`Rules Engine complete! ${result.updated} updated, ${result.notificationsCreated} notifications.`, { id: toastId });
+        toast.success(`Intelligence Scan complete! ${result.updated} updated, ${result.notificationsCreated} notifications.`, { id: toastId });
         await fetchDashboardData();
       }
     } catch (error) {
       console.error(error);
-      toast.error(error.message || "Rules engine failed to run");
+      toast.error(error.message || "Intelligence scan failed to run");
     } finally {
       setIsAutomating(false);
     }
@@ -173,171 +173,10 @@ const AdminDashboard = () => {
         </div>
       </div>
 
+      {/* Section B: Main top dashboard grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Rules Engine Control Panel */}
-        <div className="lg:col-span-2 premium-card p-8 border-l-8 border-l-brand-600 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-5">
-            <Zap size={120} />
-          </div>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-brand-600 mb-1">
-                <Zap size={20} fill="currentColor" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Maintenance Engine</span>
-              </div>
-              <h3 className="text-2xl font-black text-slate-900">Smart Membership Rules</h3>
-              <p className="text-sm text-slate-500 font-medium max-w-md">
-                Automated status escalation, expiry reminders, and attendance risk detection. 
-                System runs daily at 00:00.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3">
-              <button 
-                onClick={() => handleRunEngine(false)}
-                disabled={isAutomating}
-                className="px-6 py-3 bg-slate-900 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-200 hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <Play size={16} fill="currentColor" /> {isAutomating ? 'Processing...' : 'Run Engine Now'}
-              </button>
-              <button 
-                onClick={() => handleRunEngine(true)}
-                disabled={isAutomating}
-                className="px-6 py-3 bg-white text-slate-700 border-2 border-slate-100 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <Eye size={16} /> Preview Dry Run
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-8 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-6">
-            <div className="space-y-1">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <History size={12} /> Last Run
-              </p>
-              <p className="text-sm font-black text-slate-900">
-                {lastRun ? safeFormatDate(lastRun.createdAt, 'MMM d, p') : 'Never'}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <Users size={12} /> Checked
-              </p>
-              <p className="text-xl font-black text-slate-900">{lastRun?.checked || 0}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 text-brand-600">
-                <CheckCircle2 size={12} /> Updated
-              </p>
-              <p className="text-xl font-black text-brand-600">{lastRun?.updated || 0}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 text-rose-500">
-                <ClipboardList size={12} /> Tasks
-              </p>
-              <p className="text-xl font-black text-rose-500">{lastRun?.reviewTasksCreated || 0}</p>
-            </div>
-          </div>
-          
-          <button 
-            onClick={() => setShowHistory(!showHistory)}
-            className="mt-6 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-brand-600 transition-colors flex items-center gap-1"
-          >
-            {showHistory ? 'Hide Run History' : 'View Detailed Run History'} <ChevronRight size={12} className={showHistory ? 'rotate-90' : ''} />
-          </button>
-
-          <AnimatePresence>
-            {showHistory && (
-              <motion.div 
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="mt-6 space-y-3 bg-slate-50 rounded-2xl p-4 max-h-[200px] overflow-y-auto no-scrollbar border border-slate-100 shadow-inner">
-                  {maintenanceRuns.length > 0 ? maintenanceRuns.map((run, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${run.dryRun ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                          {run.dryRun ? <Eye size={14} /> : <CheckCircle2 size={14} />}
-                        </div>
-                        <div>
-                          <p className="text-xs font-black text-slate-900">{safeFormatDate(run.createdAt, 'MMM d, HH:mm')}</p>
-                          <p className="text-[9px] font-bold text-slate-400">Trigger: {run.triggeredBy}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-4 text-center">
-                        <div>
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Update</p>
-                          <p className="text-xs font-black text-brand-600">{run.updated}</p>
-                        </div>
-                        <div>
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Notif</p>
-                          <p className="text-xs font-black text-slate-900">{run.notificationsCreated}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )) : (
-                    <p className="text-center py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">No runs recorded yet</p>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Membership Standing Pie */}
-        <div className="premium-card p-10 flex flex-col items-center justify-center text-center border border-slate-50">
-          <h3 className="text-xl font-black text-slate-900 mb-2">Member Health</h3>
-          <p className="text-slate-500 text-sm font-medium mb-10">Healthy vs Restricted accounts.</p>
-          <div className="h-64 w-full relative">
-            {mounted && members.length > 0 && metrics.activeCount + (members.length - metrics.activeCount) > 0 ? (
-              <>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-3xl font-black text-slate-900">
-                    {members.length > 0 ? Math.round((metrics.activeCount / members.length) * 100) : 0}%
-                  </span>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active</span>
-                </div>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      innerRadius={70}
-                      outerRadius={90}
-                      paddingAngle={8}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-slate-300">
-                <Database size={40} className="mb-2 opacity-20" />
-                <p className="text-[10px] font-black uppercase tracking-widest">No data available</p>
-              </div>
-            )}
-          </div>
-          <div className="mt-8 grid grid-cols-2 gap-4 w-full">
-            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100/50 text-left">
-              <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Active</p>
-              <p className="text-xl font-black text-emerald-700">{metrics.activeCount}</p>
-            </div>
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-left">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 text-rose-500">Restricted</p>
-              <p className="text-xl font-black text-rose-600">{members.length - metrics.activeCount}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="premium-card p-10 flex flex-col shadow-sm border border-slate-50">
+        {/* LEFT: Acquisition Trends */}
+        <div className="lg:col-span-2 premium-card p-10 flex flex-col shadow-sm border border-slate-50">
           <div className="flex items-center justify-between mb-10">
             <div>
               <p className="text-brand-600 font-black uppercase tracking-widest text-[10px] mb-1">Growth Vectors</p>
@@ -391,20 +230,190 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-6 h-full">
-            {stats.map((stat, idx) => (
-              <motion.div 
-                key={idx} 
-                className="premium-card p-6 group hover:border-brand-500 transition-all border border-slate-50"
-              >
-                <div className={`w-12 h-12 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                  <stat.icon size={24} />
+        {/* RIGHT: Stat Cards - 2x2 grid on desktop */}
+        <div className="grid grid-cols-2 gap-4 h-full content-start">
+          {stats.map((stat, idx) => (
+            <motion.div 
+              key={idx} 
+              className="premium-card p-6 group hover:border-brand-500 transition-all border border-slate-50 flex flex-col justify-center"
+            >
+              <div className={`w-12 h-12 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                <stat.icon size={24} />
+              </div>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
+              <h3 className="text-3xl font-black text-slate-900 tabular-nums">{stat.value}</h3>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      {/* Section C: Below the graph/stat grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        {/* LEFT: Member Health */}
+        <div className="premium-card p-10 flex flex-col items-center justify-center text-center border border-slate-50">
+          <div className="w-full text-left mb-6">
+            <h3 className="text-xl font-black text-slate-900 mb-2">Member Health</h3>
+            <p className="text-slate-500 text-sm font-medium">Healthy vs Restricted accounts.</p>
+          </div>
+          <div className="h-64 w-full relative">
+            {mounted && members.length > 0 && metrics.activeCount + (members.length - metrics.activeCount) > 0 ? (
+              <>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-3xl font-black text-slate-900">
+                    {members.length > 0 ? Math.round((metrics.activeCount / members.length) * 100) : 0}%
+                  </span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active</span>
                 </div>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
-                <h3 className="text-3xl font-black text-slate-900 tabular-nums">{stat.value}</h3>
-              </motion.div>
-            ))}
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      innerRadius={70}
+                      outerRadius={90}
+                      paddingAngle={8}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-slate-300">
+                <Database size={40} className="mb-2 opacity-20" />
+                <p className="text-[10px] font-black uppercase tracking-widest">No data available</p>
+              </div>
+            )}
+          </div>
+          <div className="mt-8 grid grid-cols-2 gap-4 w-full">
+            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100/50 text-left">
+              <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Active</p>
+              <p className="text-xl font-black text-emerald-700">{metrics.activeCount}</p>
+            </div>
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-left">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 text-rose-500">Restricted</p>
+              <p className="text-xl font-black text-rose-600">{members.length - metrics.activeCount}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT: MemberSync Intelligence Engine */}
+        <div className="premium-card p-10 border-t-4 border-t-brand-600 relative overflow-hidden flex flex-col">
+          <div className="absolute top-0 right-0 p-4 opacity-5">
+            <Zap size={120} />
+          </div>
+          
+          <div className="relative z-10 flex-1 flex flex-col">
+            <div className="mb-8">
+              <div className="flex items-center gap-2 text-brand-600 mb-2">
+                <Zap size={16} fill="currentColor" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Lifecycle Intelligence</span>
+              </div>
+              <h3 className="text-xl font-black text-slate-900 mb-2">MemberSync Intelligence Engine</h3>
+              <p className="text-sm text-slate-500 font-medium max-w-sm">
+                Automated status escalation, expiry reminders, and attendance risk detection. 
+                System runs daily at 00:00.
+              </p>
+            </div>
+            
+            <div className="flex flex-wrap gap-3 mb-auto">
+              <button 
+                onClick={() => handleRunEngine(false)}
+                disabled={isAutomating}
+                className="px-5 py-2.5 bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest rounded-xl shadow-md shadow-slate-200 hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <Play size={14} fill="currentColor" /> {isAutomating ? 'Processing...' : 'Run Intelligence Scan'}
+              </button>
+              <button 
+                onClick={() => handleRunEngine(true)}
+                disabled={isAutomating}
+                className="px-5 py-2.5 bg-white text-slate-700 border-2 border-slate-100 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <Eye size={14} /> Preview Scan
+              </button>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-slate-100">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="space-y-1">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <History size={10} /> Last Run
+                  </p>
+                  <p className="text-xs font-black text-slate-900">
+                    {lastRun ? safeFormatDate(lastRun.createdAt, 'MMM d, p') : 'Never'}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Users size={10} /> Checked
+                  </p>
+                  <p className="text-lg font-black text-slate-900">{lastRun?.checked || 0}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 text-brand-600">
+                    <CheckCircle2 size={10} /> Updated
+                  </p>
+                  <p className="text-lg font-black text-brand-600">{lastRun?.updated || 0}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 text-rose-500">
+                    <ClipboardList size={10} /> Tasks
+                  </p>
+                  <p className="text-lg font-black text-rose-500">{lastRun?.reviewTasksCreated || 0}</p>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => setShowHistory(!showHistory)}
+                className="mt-5 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-brand-600 transition-colors flex items-center gap-1"
+              >
+                {showHistory ? 'Hide Run History' : 'View Detailed Run History'} <ChevronRight size={12} className={showHistory ? 'rotate-90' : ''} />
+              </button>
+
+              <AnimatePresence>
+                {showHistory && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-4 space-y-2 bg-slate-50 rounded-xl p-3 max-h-[150px] overflow-y-auto no-scrollbar border border-slate-100 shadow-inner">
+                      {maintenanceRuns.length > 0 ? maintenanceRuns.map((run, i) => (
+                        <div key={i} className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-slate-100 shadow-sm">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-1.5 rounded-md ${run.dryRun ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                              {run.dryRun ? <Eye size={12} /> : <CheckCircle2 size={12} />}
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black text-slate-900">{safeFormatDate(run.createdAt, 'MMM d, HH:mm')}</p>
+                              <p className="text-[8px] font-bold text-slate-400">Trigger: {run.triggeredBy}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-3 text-center">
+                            <div>
+                              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Update</p>
+                              <p className="text-[10px] font-black text-brand-600">{run.updated}</p>
+                            </div>
+                            <div>
+                              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Notif</p>
+                              <p className="text-[10px] font-black text-slate-900">{run.notificationsCreated}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )) : (
+                        <p className="text-center py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">No runs recorded yet</p>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </div>
