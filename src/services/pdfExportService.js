@@ -7,6 +7,8 @@ const getInitials = (name = "Member") => {
   return name.split(" ").filter(n => n).map(n => n[0]).join("").slice(0, 2).toUpperCase();
 };
 
+const isBase64Image = (value = "") => typeof value === "string" && value.startsWith("data:image");
+
 const safePdfDate = (value, fallback = "N/A") => {
   try {
     if (!value) return fallback;
@@ -174,8 +176,16 @@ export const exportSingleMemberToPDF = async (member) => {
   doc.rect(0, 0, 210, 50, 'F');
   
   // Profile Photo if exists
-  const photoURL = member.profilePhoto || member.photoURL || member.profileImage || "";
-  const base64Img = photoURL ? await loadImageAsBase64(photoURL) : null;
+  const photoSrc = member.profilePhotoBase64 || member.profilePhoto || member.photoURL || member.profileImage || "";
+  let base64Img = null;
+
+  if (photoSrc) {
+    if (isBase64Image(photoSrc)) {
+      base64Img = photoSrc;
+    } else {
+      base64Img = await loadImageAsBase64(photoSrc);
+    }
+  }
   
   if (base64Img) {
     // Add a circular frame for the photo
@@ -279,8 +289,16 @@ export const exportMembershipCardToPDF = async (member) => {
   doc.circle(85.6, 0, 30, 'F');
 
   // Profile Photo
-  const photoURL = member.profilePhoto || member.photoURL || member.profileImage || "";
-  const base64Img = photoURL ? await loadImageAsBase64(photoURL) : null;
+  const photoSrc = member.profilePhotoBase64 || member.profilePhoto || member.photoURL || member.profileImage || "";
+  let base64Img = null;
+
+  if (photoSrc) {
+    if (isBase64Image(photoSrc)) {
+      base64Img = photoSrc;
+    } else {
+      base64Img = await loadImageAsBase64(photoSrc);
+    }
+  }
   
   if (base64Img) {
     // Small rounded photo on the card
