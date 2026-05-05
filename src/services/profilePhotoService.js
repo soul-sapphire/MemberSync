@@ -3,6 +3,47 @@ import { doc, getDoc, getDocs, collection, query, where, updateDoc, serverTimest
 import { db, storage } from "../firebase/config";
 
 /**
+ * Helper to compress an image file to a small Base64 string for PDF exports.
+ */
+const generateThumbnailBase64 = (file) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 256;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        resolve(canvas.toDataURL('image/jpeg', 0.75));
+      };
+      img.onerror = () => resolve(null);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+};
+
+/**
  * Uploads a member's profile photo to Firebase Storage and updates their Firestore document.
  * @param {string} uid - The member's user ID.
  * @param {File} file - The image file to upload.
@@ -27,6 +68,9 @@ export const uploadMemberProfilePhoto = async (uid, file) => {
   try {
     console.log(`Starting upload for UID: ${uid}, File: ${file.name}`);
     
+    // Generate Base64 thumbnail before upload
+    const profilePhotoBase64 = await generateThumbnailBase64(file);
+    
     // 1. Upload to Firebase Storage
     const extension = file.name.split('.').pop();
     const storagePath = `member-profile-photos/${uid}/profile.${extension}`;
@@ -40,6 +84,8 @@ export const uploadMemberProfilePhoto = async (uid, file) => {
     const updateData = {
       profilePhoto: downloadURL,
       photoURL: downloadURL,
+      profileImage: downloadURL,
+      ...(profilePhotoBase64 && { profilePhotoBase64 }),
       updatedAt: serverTimestamp()
     };
 
