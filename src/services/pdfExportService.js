@@ -1,0 +1,239 @@
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import { format } from 'date-fns';
+
+export const exportMembersToPDF = (members, title = "Member Directory") => {
+  const doc = new jsPDF();
+  const dateStr = format(new Date(), 'PPP p');
+
+  // Background Accent
+  doc.setFillColor(79, 70, 229); // Brand-600
+  doc.rect(0, 0, 210, 40, 'F');
+
+  // Header
+  doc.setFontSize(22);
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.text("MemberSync Dashboard", 14, 20);
+  
+  doc.setFontSize(10);
+  doc.setTextColor(224, 231, 255);
+  doc.setFont("helvetica", "normal");
+  doc.text(title, 14, 28);
+  doc.text(`Generated on: ${dateStr}`, 14, 34);
+
+  // Summary Cards
+  const stats = {
+    total: members.length,
+    active: members.filter(m => m.status === 'Active').length,
+    expired: members.filter(m => m.status === 'Expired').length,
+    pending: members.filter(m => m.status === 'Pending').length,
+  };
+
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(14, 45, 182, 20, 3, 3, 'F');
+  
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.text("SUMMARY OVERVIEW", 20, 52);
+  
+  doc.setFontSize(11);
+  doc.setTextColor(30, 41, 59);
+  doc.setFont("helvetica", "bold");
+  doc.text(`Total: ${stats.total}  |  Active: ${stats.active}  |  Pending: ${stats.pending}  |  Expired: ${stats.expired}`, 20, 60);
+
+  // Table
+  const tableColumn = ["ID", "Member Name", "Email Address", "Phone", "Plan", "Status"];
+  const tableRows = members.map(m => [
+    m.memberId || 'N/A',
+    m.fullName,
+    m.email,
+    m.phone || 'N/A',
+    m.planName,
+    m.status.toUpperCase(),
+  ]);
+
+  doc.autoTable({
+    head: [tableColumn],
+    body: tableRows,
+    startY: 75,
+    theme: 'grid',
+    headStyles: { 
+      fillColor: [79, 70, 229], 
+      textColor: [255, 255, 255],
+      fontSize: 9,
+      fontStyle: 'bold',
+      halign: 'center'
+    },
+    styles: { 
+      fontSize: 8, 
+      cellPadding: 4,
+      font: "helvetica",
+      textColor: [51, 65, 85]
+    },
+    columnStyles: {
+      0: { halign: 'center' },
+      5: { halign: 'center', fontStyle: 'bold' }
+    },
+    alternateRowStyles: {
+      fillColor: [249, 250, 251]
+    }
+  });
+
+  // Footer
+  const pageCount = doc.internal.getNumberOfPages();
+  doc.setFontSize(8);
+  doc.setTextColor(148, 163, 184);
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.text(`MemberSync Professional Report  |  Page ${i} of ${pageCount}`, 105, 285, { align: 'center' });
+  }
+
+  doc.save(`MemberSync_Report_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
+};
+
+export const exportSingleMemberToPDF = (member) => {
+  const doc = new jsPDF();
+  const dateStr = format(new Date(), 'PPP p');
+
+  // Brand Header
+  doc.setFillColor(79, 70, 229);
+  doc.rect(0, 0, 210, 50, 'F');
+  
+  doc.setFontSize(24);
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.text(member.fullName, 14, 25);
+  
+  doc.setFontSize(12);
+  doc.setTextColor(224, 231, 255);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Member ID: ${member.memberId || 'N/A'}`, 14, 35);
+  doc.text(`Status: ${member.status.toUpperCase()}`, 14, 42);
+
+  // Sections
+  const drawSection = (title, data, y) => {
+    doc.setFontSize(13);
+    doc.setTextColor(79, 70, 229);
+    doc.setFont("helvetica", "bold");
+    doc.text(title.toUpperCase(), 14, y);
+    
+    doc.setDrawColor(226, 232, 240);
+    doc.line(14, y + 2, 196, y + 2);
+
+    doc.autoTable({
+      body: data,
+      startY: y + 5,
+      theme: 'plain',
+      styles: { fontSize: 10, cellPadding: 3, textColor: [51, 65, 85] },
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 45, textColor: [100, 116, 139] } },
+    });
+    
+    return doc.lastAutoTable.finalY + 15;
+  };
+
+  let nextY = 65;
+  nextY = drawSection("Personal Information", [
+    ["Email Address", member.email],
+    ["Phone Number", member.phone || 'N/A'],
+    ["Residential Address", member.address || 'N/A'],
+  ], nextY);
+
+  nextY = drawSection("Membership Details", [
+    ["Membership Plan", member.planName],
+    ["Joined On", member.joinDate || 'N/A'],
+    ["Expires On", member.expiryDate || 'N/A'],
+    ["Payment Status", member.paymentStatus || 'Pending'],
+  ], nextY);
+
+  nextY = drawSection("Financial Overview", [
+    ["Lifetime Spend", `$${member.totalPaid || 0}`],
+    ["Last Billing Date", member.updatedAt ? format(new Date(member.updatedAt), 'PP') : 'N/A'],
+  ], nextY);
+
+  if (member.notes) {
+    doc.setFontSize(13);
+    doc.setTextColor(79, 70, 229);
+    doc.setFont("helvetica", "bold");
+    doc.text("ADMINISTRATIVE NOTES", 14, nextY);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(71, 85, 105);
+    doc.setFont("helvetica", "normal");
+    const splitNotes = doc.splitTextToSize(member.notes, 180);
+    doc.text(splitNotes, 14, nextY + 10);
+  }
+
+  // Footer
+  doc.setFontSize(8);
+  doc.setTextColor(148, 163, 184);
+  doc.text(`Official Member Profile Document  |  Generated by MemberSync  |  ${dateStr}`, 105, 285, { align: 'center' });
+
+  doc.save(`Profile_${member.memberId || 'Member'}.pdf`);
+};
+
+export const exportMembershipCardToPDF = (member) => {
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: [85.6, 53.98] // Standard CR80 credit card size
+  });
+
+  // Background
+  doc.setFillColor(15, 23, 42); // slate-900
+  doc.rect(0, 0, 85.6, 53.98, 'F');
+  
+  // Accents
+  doc.setFillColor(79, 70, 229); // brand-600
+  doc.circle(85.6, 0, 30, 'F');
+
+  // Text
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text("MemberSync", 5, 10);
+
+  doc.setFontSize(6);
+  doc.setTextColor(200, 200, 200);
+  doc.text(`${member.planName.toUpperCase()} TIER`, 5, 14);
+
+  doc.setFontSize(12);
+  doc.setTextColor(255, 255, 255);
+  doc.text(member.fullName, 5, 30);
+  
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text(member.memberId, 5, 35);
+
+  doc.setFontSize(6);
+  doc.text(`Valid Until: ${member.expiryDate}`, 5, 48);
+
+  doc.save(`MembershipCard_${member.memberId}.pdf`);
+};
+
+export const exportReportToPDF = (reportData, title) => {
+  const doc = new jsPDF();
+  const dateStr = format(new Date(), 'PPP p');
+
+  doc.setFillColor(79, 70, 229);
+  doc.rect(0, 0, 210, 30, 'F');
+
+  doc.setFontSize(20);
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.text(title, 14, 20);
+
+  doc.setFontSize(10);
+  doc.setTextColor(51, 65, 85);
+  doc.text(`Generated: ${dateStr}`, 14, 40);
+
+  doc.autoTable({
+    head: [reportData.columns],
+    body: reportData.rows,
+    startY: 45,
+    theme: 'grid',
+    headStyles: { fillColor: [79, 70, 229] }
+  });
+
+  doc.save(`${title.replace(/\s+/g, '_')}_${format(new Date(), 'yyyyMMdd')}.pdf`);
+};
