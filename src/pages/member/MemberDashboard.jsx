@@ -1,17 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getMemberByUid } from '../../services/memberService';
 import { motion } from 'framer-motion';
-import { UserCircle, CreditCard, Bell, Calendar, Shield, Clock } from 'lucide-react';
+import { UserCircle, CreditCard, Bell, Calendar, Shield, Clock, Camera, Loader2 } from 'lucide-react';
 import Avatar from '../../components/ui/Avatar';
 import { safeFormatDate, getStatusColor as getStatusColorUtil, formatCurrency } from '../../utils/formatters';
+import { uploadMemberProfilePhoto } from '../../services/profilePhotoService';
+import toast from 'react-hot-toast';
 
 const MemberDashboard = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [member, setMember] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -31,6 +35,46 @@ const MemberDashboard = () => {
     if (currentUser) fetchProfile();
   }, [currentUser, navigate]);
 
+  const handlePhotoChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    console.log("Selected file:", file);
+    console.log("Current user uid:", currentUser?.uid);
+
+    try {
+      setUploading(true);
+      const toastId = toast.loading('Uploading profile photo...');
+      
+      const url = await uploadMemberProfilePhoto(currentUser.uid, file);
+      console.log("Upload result URL:", url);
+      
+      // Update local state immediately for instant feedback
+      setMember(prev => ({
+        ...prev,
+        profilePhoto: url,
+        photoURL: url,
+        profileImage: url // Supporting all variations for safety
+      }));
+      
+      toast.success('Profile photo updated successfully', { id: toastId });
+      
+      // Reset file input so the same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error(error.message || 'Failed to upload photo');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const triggerUpload = () => {
+    fileInputRef.current?.click();
+  };
+
   if (loading) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
@@ -41,6 +85,7 @@ const MemberDashboard = () => {
 
   if (!member) return null;
 
+  const displayPhoto = member?.profilePhoto || member?.photoURL || member?.profileImage || currentUser?.photoURL || "";
 
   return (
     <motion.div
@@ -60,7 +105,31 @@ const MemberDashboard = () => {
           <div className="premium-card p-8 flex flex-col sm:flex-row items-center gap-8 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/5 rounded-full blur-3xl pointer-events-none -mr-10 -mt-10"></div>
             
-            <Avatar src={member.profileImage} name={member.fullName} size="xl" className="border-4 border-white shadow-xl" />
+            <div className="relative group">
+              <Avatar src={displayPhoto} name={member.fullName} size="xl" className="border-4 border-white shadow-xl" />
+              
+              <button 
+                onClick={triggerUpload}
+                disabled={uploading}
+                className="absolute bottom-2 right-2 p-3 bg-brand-600 text-white rounded-full cursor-pointer hover:bg-brand-700 hover:scale-110 transition-all shadow-lg z-20 disabled:opacity-50"
+              >
+                {uploading ? <Loader2 size={20} className="animate-spin" /> : <Camera size={20} />}
+              </button>
+
+              <input 
+                type="file" 
+                accept="image/*" 
+                ref={fileInputRef} 
+                onChange={handlePhotoChange} 
+                className="hidden" 
+              />
+              
+              {uploading && (
+                <div className="absolute inset-0 bg-black/20 rounded-[2.5rem] flex items-center justify-center z-10">
+                  <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
+            </div>
             
             <div className="flex-1 text-center sm:text-left z-10">
               <h2 className="text-2xl font-black text-slate-900 mb-1">{member.fullName}</h2>

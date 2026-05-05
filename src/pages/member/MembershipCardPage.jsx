@@ -26,9 +26,14 @@ const MembershipCardPage = () => {
     if (currentUser) fetchMember();
   }, [currentUser]);
 
-  const handleDownload = () => {
-    exportMembershipCardToPDF(member);
-    toast.success('Membership Card downloaded!');
+  const handleDownload = async () => {
+    const toastId = toast.loading('Generating card...');
+    try {
+      await exportMembershipCardToPDF(member);
+      toast.success('Membership Card downloaded!', { id: toastId });
+    } catch (error) {
+      toast.error('Failed to generate card', { id: toastId });
+    }
   };
 
   if (loading) return <div className="flex justify-center p-10"><div className="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div></div>;
@@ -61,7 +66,7 @@ const MembershipCardPage = () => {
         </div>
 
         <div className="relative z-10 flex items-center gap-4">
-          <Avatar src={member.profileImage} name={member.fullName} size="lg" className="border-2 border-white/20 shadow-lg" />
+          <Avatar src={member.profilePhoto || member.photoURL || member.profileImage} name={member.fullName} size="lg" className="border-2 border-white/20 shadow-lg" />
           <div>
             <h2 className="text-2xl font-black tracking-tight">{member.fullName}</h2>
             <p className="font-mono text-sm text-brand-200 mt-1">{member.memberId}</p>

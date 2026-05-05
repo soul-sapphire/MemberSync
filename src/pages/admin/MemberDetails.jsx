@@ -146,9 +146,10 @@ const MemberDetails = () => {
 
         <div className="flex flex-wrap gap-4 justify-center">
           <button
-            onClick={() => {
-              exportSingleMemberToPDF(member);
-              toast.success("Document generated");
+            onClick={async () => {
+              const toastId = toast.loading("Generating PDF...");
+              await exportSingleMemberToPDF(member);
+              toast.success("Document generated", { id: toastId });
             }}
             className="premium-button-secondary py-3 px-6"
           >
@@ -207,7 +208,7 @@ const MemberDetails = () => {
             <div className={`absolute top-0 left-0 w-full h-2 ${member.status === 'Active' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
 
             <div className="mx-auto mb-6 w-max relative">
-              <Avatar src={member.profileImage} name={member.fullName} size="xl" className="border-4 border-white shadow-xl" />
+              <Avatar src={member.profilePhoto || member.photoURL || member.profileImage} name={member.fullName} size="xl" className="border-4 border-white shadow-xl" />
               <div className="absolute bottom-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-lg border border-slate-50">
                 <div className={`w-4 h-4 rounded-full ${member.status === 'Active' ? 'bg-emerald-500 shadow-emerald-200 shadow-lg' : 'bg-slate-300'}`} />
               </div>

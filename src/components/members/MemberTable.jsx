@@ -31,7 +31,7 @@ const MemberTable = ({ members, onViewDetails, onDelete, onExportSingle }) => {
             >
               <td className="px-8 py-5 rounded-l-[2rem]">
                 <div className="flex items-center gap-4 max-w-[300px]">
-                  <Avatar src={member.profileImage} name={member.fullName} size="md" />
+                  <Avatar src={member.profilePhoto || member.photoURL || member.profileImage} name={member.fullName} size="md" />
                   <div className="min-w-0 flex-1">
                     <div className="font-bold text-surface-900 text-base truncate" title={member.fullName}>{member.fullName}</div>
                     <div className="text-xs text-surface-400 font-medium truncate" title={member.email}>{member.email}</div>
@@ -79,7 +79,10 @@ const MemberTable = ({ members, onViewDetails, onDelete, onExportSingle }) => {
               <td className="px-8 py-5 rounded-r-[2rem] text-right" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <button 
-                    onClick={() => onExportSingle(member)}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await onExportSingle(member);
+                    }}
                     className="p-2.5 text-surface-400 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition-all"
                     title="Export Profile"
                   >

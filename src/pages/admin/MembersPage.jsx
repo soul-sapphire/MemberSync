@@ -221,9 +221,10 @@ const MembersPage = () => {
                     members={filteredMembers}
                     onViewDetails={(m) => window.location.href = `/admin/members/${m.id}`}
                     onDelete={(m) => setDeleteModal({ isOpen: true, member: m })}
-                    onExportSingle={(m) => {
-                      exportSingleMemberToPDF(m);
-                      toast.success(`Profile for ${m.fullName} exported`);
+                    onExportSingle={async (m) => {
+                      const toastId = toast.loading(`Generating profile for ${m.fullName}...`);
+                      await exportSingleMemberToPDF(m);
+                      toast.success(`Profile for ${m.fullName} exported`, { id: toastId });
                     }}
                   />
                 </div>
@@ -235,9 +236,10 @@ const MembersPage = () => {
                       member={m}
                       onViewDetails={(m) => window.location.href = `/admin/members/${m.id}`}
                       onDelete={(m) => setDeleteModal({ isOpen: true, member: m })}
-                      onExportSingle={(m) => {
-                        exportSingleMemberToPDF(m);
-                        toast.success(`Profile for ${m.fullName} exported`);
+                      onExportSingle={async (m) => {
+                        const toastId = toast.loading(`Generating profile for ${m.fullName}...`);
+                        await exportSingleMemberToPDF(m);
+                        toast.success(`Profile for ${m.fullName} exported`, { id: toastId });
                       }}
                     />
                   ))}

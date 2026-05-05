@@ -13,7 +13,7 @@ const MemberCard = ({ member, onViewDetails, onDelete, onExportSingle }) => {
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Avatar src={member.profileImage} name={member.fullName} size="lg" />
+          <Avatar src={member.profilePhoto || member.photoURL || member.profileImage} name={member.fullName} size="lg" />
           <div>
             <h3 className="font-bold text-surface-900 text-lg leading-tight truncate" title={member.fullName}>{member.fullName}</h3>
             <p className="text-xs text-surface-400 font-bold uppercase tracking-wider mt-0.5">{member.memberId || 'NO ID'}</p>
@@ -61,7 +61,10 @@ const MemberCard = ({ member, onViewDetails, onDelete, onExportSingle }) => {
           View Profile
         </button>
         <button
-          onClick={() => onExportSingle(member)}
+          onClick={async (e) => {
+            e.stopPropagation();
+            await onExportSingle(member);
+          }}
           className="p-3 text-surface-400 hover:text-brand-600 hover:bg-brand-50 rounded-2xl transition-all border border-surface-200/50"
         >
           <Download size={20} />
