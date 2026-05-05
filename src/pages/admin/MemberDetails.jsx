@@ -158,8 +158,13 @@ const MemberDetails = () => {
           <button
             onClick={async () => {
               const toastId = toast.loading("Generating PDF...");
-              await exportSingleMemberToPDF(member);
-              toast.success("Document generated", { id: toastId });
+              try {
+                await exportSingleMemberToPDF(member);
+                toast.success("Document generated", { id: toastId });
+              } catch (error) {
+                console.error("PDF export failed:", error);
+                toast.error("PDF export failed. Please check member data and try again.", { id: toastId });
+              }
             }}
             className="premium-button-secondary py-3 px-6"
           >

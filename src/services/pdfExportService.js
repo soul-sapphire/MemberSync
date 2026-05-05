@@ -1,6 +1,40 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
+
+const getInitials = (name = "Member") => {
+  if (!name) return "M";
+  return name.split(" ").filter(n => n).map(n => n[0]).join("").slice(0, 2).toUpperCase();
+};
+
+const safePdfDate = (value, fallback = "N/A") => {
+  try {
+    if (!value) return fallback;
+
+    let date;
+
+    if (value?.toDate && typeof value.toDate === "function") {
+      date = value.toDate();
+    } else if (value instanceof Date) {
+      date = value;
+    } else if (typeof value === "string" || typeof value === "number") {
+      date = new Date(value);
+    } else if (value?.seconds) {
+      date = new Date(value.seconds * 1000);
+    }
+
+    if (!date || Number.isNaN(date.getTime())) return fallback;
+
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric"
+    });
+  } catch (error) {
+    console.warn("Invalid PDF date:", value, error);
+    return fallback;
+  }
+};
 
 /**
  * Helper to load an image from a URL and convert it to base64.
@@ -9,7 +43,8 @@ import { format } from 'date-fns';
 const loadImageAsBase64 = async (url) => {
   if (!url) return null;
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { mode: 'cors' });
+    if (!response.ok) return null; // Fallback to Image silently
     const blob = await response.blob();
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -18,8 +53,25 @@ const loadImageAsBase64 = async (url) => {
       reader.readAsDataURL(blob);
     });
   } catch (error) {
-    console.warn("Failed to load image for PDF:", url, error);
-    return null;
+    console.warn("Fetch with CORS failed, trying Image object fallback:", error);
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/jpeg'));
+        } catch (e) {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
   }
 };
 
@@ -74,7 +126,7 @@ export const exportMembersToPDF = (members, title = "Member Directory") => {
     m.status.toUpperCase(),
   ]);
 
-  doc.autoTable({
+  autoTable(doc, {
     head: [tableColumn],
     body: tableRows,
     startY: 75,
@@ -122,16 +174,21 @@ export const exportSingleMemberToPDF = async (member) => {
   doc.rect(0, 0, 210, 50, 'F');
   
   // Profile Photo if exists
-  const photoURL = member.profilePhoto || member.photoURL || member.profileImage;
-  if (photoURL) {
-    const base64Img = await loadImageAsBase64(photoURL);
-    if (base64Img) {
-      // Add a circular frame for the photo
-      doc.setDrawColor(255, 255, 255);
-      doc.setLineWidth(1);
-      doc.circle(180, 25, 15, 'S');
-      doc.addImage(base64Img, 'JPEG', 165, 10, 30, 30);
-    }
+  const photoURL = member.profilePhoto || member.photoURL || member.profileImage || "";
+  const base64Img = photoURL ? await loadImageAsBase64(photoURL) : null;
+  
+  if (base64Img) {
+    // Add a circular frame for the photo
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(1);
+    doc.circle(180, 25, 15, 'S');
+    doc.addImage(base64Img, 'JPEG', 165, 10, 30, 30);
+  } else {
+    doc.setFillColor(255, 255, 255);
+    doc.circle(180, 25, 15, 'F');
+    doc.setFontSize(14);
+    doc.setTextColor(79, 70, 229);
+    doc.text(getInitials(member.fullName), 180, 26, { align: "center", baseline: "middle" });
   }
 
   doc.setFontSize(24);
@@ -155,7 +212,7 @@ export const exportSingleMemberToPDF = async (member) => {
     doc.setDrawColor(226, 232, 240);
     doc.line(14, y + 2, 196, y + 2);
 
-    doc.autoTable({
+    autoTable(doc, {
       body: data,
       startY: y + 5,
       theme: 'plain',
@@ -175,14 +232,14 @@ export const exportSingleMemberToPDF = async (member) => {
 
   nextY = drawSection("Membership Details", [
     ["Membership Plan", member.planName],
-    ["Joined On", member.joinDate || 'N/A'],
-    ["Expires On", member.expiryDate || 'N/A'],
+    ["Joined On", safePdfDate(member.joinDate)],
+    ["Expires On", safePdfDate(member.expiryDate)],
     ["Payment Status", member.paymentStatus || 'Pending'],
   ], nextY);
 
   nextY = drawSection("Financial Overview", [
     ["Lifetime Spend", `$${member.totalPaid || 0}`],
-    ["Last Billing Date", member.updatedAt ? format(new Date(member.updatedAt), 'PP') : 'N/A'],
+    ["Last Billing Date", safePdfDate(member.updatedAt)],
   ], nextY);
 
   if (member.notes) {
@@ -222,16 +279,21 @@ export const exportMembershipCardToPDF = async (member) => {
   doc.circle(85.6, 0, 30, 'F');
 
   // Profile Photo
-  const photoURL = member.profilePhoto || member.photoURL || member.profileImage;
-  if (photoURL) {
-    const base64Img = await loadImageAsBase64(photoURL);
-    if (base64Img) {
-      // Small rounded photo on the card
-      doc.setDrawColor(255, 255, 255);
-      doc.setLineWidth(0.5);
-      doc.addImage(base64Img, 'JPEG', 60, 10, 20, 20);
-      doc.rect(60, 10, 20, 20, 'S');
-    }
+  const photoURL = member.profilePhoto || member.photoURL || member.profileImage || "";
+  const base64Img = photoURL ? await loadImageAsBase64(photoURL) : null;
+  
+  if (base64Img) {
+    // Small rounded photo on the card
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(0.5);
+    doc.addImage(base64Img, 'JPEG', 60, 10, 20, 20);
+    doc.rect(60, 10, 20, 20, 'S');
+  } else {
+    doc.setFillColor(255, 255, 255);
+    doc.rect(60, 10, 20, 20, 'F');
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text(getInitials(member.fullName), 70, 21, { align: "center", baseline: "middle" });
   }
 
   // Text
@@ -253,7 +315,7 @@ export const exportMembershipCardToPDF = async (member) => {
   doc.text(member.memberId, 5, 35);
 
   doc.setFontSize(6);
-  doc.text(`Valid Until: ${member.expiryDate}`, 5, 48);
+  doc.text(`Valid Until: ${safePdfDate(member.expiryDate)}`, 5, 48);
 
   doc.save(`MembershipCard_${member.memberId}.pdf`);
 };
@@ -274,7 +336,7 @@ export const exportReportToPDF = (reportData, title) => {
   doc.setTextColor(51, 65, 85);
   doc.text(`Generated: ${dateStr}`, 14, 40);
 
-  doc.autoTable({
+  autoTable(doc, {
     head: [reportData.columns],
     body: reportData.rows,
     startY: 45,
