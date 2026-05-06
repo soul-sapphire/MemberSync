@@ -78,11 +78,19 @@ const MemberLayout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const currentUser = auth.currentUser;
+  const { userRole } = useAuth();
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     const checkProfile = async () => {
       if (!currentUser) return;
+      
+      // ADMINS: Skip profile completion check
+      if (userRole === 'admin') {
+        setChecking(false);
+        return;
+      }
+
       try {
         const { getMemberByUid } = await import('../../services/memberService');
         const member = await getMemberByUid(currentUser.uid);
@@ -96,7 +104,7 @@ const MemberLayout = ({ children }) => {
       }
     };
     checkProfile();
-  }, [currentUser, location.pathname, navigate]);
+  }, [currentUser, userRole, location.pathname, navigate]);
 
   if (checking) return <div className="flex h-screen items-center justify-center"><div className="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
