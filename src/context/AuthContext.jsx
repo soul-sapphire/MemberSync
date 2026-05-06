@@ -17,21 +17,20 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      // CLEAR STALE STATE ON USER SWITCH
+      // 1. IMMEDIATELY CLEAR STALE STATE ON ANY CHANGE
+      setCurrentUser(user);
       setUserRole(null);
       setOrganizationId(null);
       setLoading(true);
 
       if (user) {
-        console.log("Auth UID:", user.uid);
-        setCurrentUser(user);
+        console.log("AuthContext - New User Detected:", user.uid);
         try {
-          // Fetch profile from members collection (robust source of truth for membership)
+          // 2. Fetch profile from members collection (source of truth)
           const profile = await getMemberByUid(user.uid);
           
-          console.log("Loaded profile:", profile);
-          console.log("Loaded role:", profile?.role);
-          console.log("Loaded status:", profile?.status);
+          console.log("AuthContext - Loaded profile:", profile);
+          console.log("AuthContext - Loaded role:", profile?.role);
 
           if (profile) {
             setUserRole(profile.role || ROLES.MEMBER);
@@ -43,13 +42,18 @@ export const AuthProvider = ({ children }) => {
             setOrganizationId(userData?.organizationId || 'default');
           }
         } catch (e) {
-          console.error("AuthContext Error:", e);
+          console.error("AuthContext Error during profile load:", e);
           setUserRole(ROLES.MEMBER);
           setOrganizationId('default');
         }
       } else {
+        console.log("AuthContext - User Logged Out");
         setCurrentUser(null);
+        setUserRole(null);
+        setOrganizationId(null);
       }
+      
+      // 3. FINAL LOADING STATE RESOLUTION
       setLoading(false);
     });
 

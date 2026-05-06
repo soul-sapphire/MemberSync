@@ -14,31 +14,35 @@ const LoginPage = () => {
   /**
    * Safe redirection flow based on user role and data state.
    */
-  const handleRedirect = async (user, userData) => {
-    // 1. Resolve role (prefer member doc role if exists)
-    let profile = await getMemberByUid(user.uid);
-    const role = profile?.role || userData?.role || ROLES.MEMBER;
+  const handleRedirect = async (user) => {
+    // ALWAYS fetch fresh profile from the members collection (source of truth for role)
+    const profile = await getMemberByUid(user.uid);
+    const role = String(profile?.role || ROLES.MEMBER).toLowerCase().trim();
     
-    console.log("Login Redirect - UID:", user.uid);
-    console.log("Login Redirect - Role:", role);
+    console.log("Login auth success uid:", user.uid);
+    console.log("Login loaded profile:", profile);
+    console.log("Login redirect role:", role);
 
-    try {
-      if (role === ROLES.ADMIN) {
-        // ADMINS: Always go to dashboard, skip profile checks
-        navigate('/admin/dashboard');
-      } else {
-        // MEMBERS/STAFF/MANAGERS: Check if member record exists
-        if (!profile) {
-          console.log("Login Redirect - No profile, forcing onboarding");
-          navigate('/member/complete-profile');
-        } else {
-          console.log("Login Redirect - Member dashboard");
-          navigate('/member/dashboard');
-        }
+    if (!profile && role !== ROLES.ADMIN) {
+      // If no profile exists and not an admin (admins might not have member docs yet if newly created)
+      // Check if they are in the users table at least
+      const userData = await getUserData(user.uid);
+      const fallbackRole = String(userData?.role || ROLES.MEMBER).toLowerCase().trim();
+      
+      if (fallbackRole === ROLES.ADMIN) {
+        navigate('/admin/dashboard', { replace: true });
+        return;
       }
-    } catch (error) {
-      console.error("Redirect error:", error);
-      navigate('/member/dashboard');
+      
+      console.log("Login Redirect - No profile, forcing onboarding");
+      navigate('/member/complete-profile', { replace: true });
+      return;
+    }
+
+    if (role === ROLES.ADMIN) {
+      navigate('/admin/dashboard', { replace: true });
+    } else {
+      navigate('/member/dashboard', { replace: true });
     }
   };
 
@@ -47,11 +51,8 @@ const LoginPage = () => {
     setLoading(true);
     try {
       const user = await loginWithEmail(email, password);
-      // ALWAYS fetch fresh user data from the source of truth (Firestore)
-      const userData = await getUserData(user.uid);
-      
-      toast.success('Login successful!');
-      await handleRedirect(user, userData);
+      toast.success('Authentication successful');
+      await handleRedirect(user);
     } catch (error) {
       console.error("Email Login Error:", error);
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
@@ -67,9 +68,9 @@ const LoginPage = () => {
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
-      const { user, userData } = await signInWithGoogle();
-      toast.success('Welcome back!');
-      await handleRedirect(user, userData);
+      const { user } = await signInWithGoogle();
+      toast.success('Authentication successful');
+      await handleRedirect(user);
     } catch (error) {
       console.error("Google Login Error:", error);
       if (error.code === 'auth/popup-closed-by-user') {
