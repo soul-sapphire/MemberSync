@@ -12,16 +12,26 @@ const RegisterPage = () => {
   const navigate = useNavigate();
 
   const handleRedirect = async (user, userData) => {
-    if (userData.role === 'admin') {
-      navigate('/admin/dashboard');
-    } else {
-      // Check if member profile exists
-      const member = await getMemberByUid(user.uid);
-      if (!member) {
-        navigate('/member/complete-profile');
+    // 1. Resolve role (prefer member doc role if exists)
+    let profile = await getMemberByUid(user.uid);
+    const role = profile?.role || userData?.role || 'member';
+    
+    console.log("Register Redirect - UID:", user.uid);
+    console.log("Register Redirect - Role:", role);
+
+    try {
+      if (role === 'admin') {
+        navigate('/admin/dashboard');
       } else {
-        navigate('/member/dashboard');
+        if (!profile) {
+          navigate('/member/complete-profile');
+        } else {
+          navigate('/member/dashboard');
+        }
       }
+    } catch (error) {
+      console.error("Redirect error:", error);
+      navigate('/member/dashboard');
     }
   };
 

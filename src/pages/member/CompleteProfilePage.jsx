@@ -5,11 +5,18 @@ import { getMemberByUid, addMember, updateMember } from '../../services/memberSe
 import toast from 'react-hot-toast';
 
 const CompleteProfilePage = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, userRole } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [existingId, setExistingId] = useState(null);
+
+  useEffect(() => {
+    // ADMIN GUARD: Do not force admins to complete member profiles
+    if (userRole === 'admin') {
+      navigate('/admin/dashboard');
+    }
+  }, [userRole, navigate]);
 
   const [formData, setFormData] = useState({
     fullName: currentUser?.displayName || '',

@@ -15,32 +15,29 @@ const LoginPage = () => {
    * Safe redirection flow based on user role and data state.
    */
   const handleRedirect = async (user, userData) => {
-    // 1. Critical data check
-    if (!userData) {
-      console.warn("Login: No user document found for UID:", user.uid);
-      navigate('/member/complete-profile');
-      return;
-    }
+    // 1. Resolve role (prefer member doc role if exists)
+    let profile = await getMemberByUid(user.uid);
+    const role = profile?.role || userData?.role || ROLES.MEMBER;
+    
+    console.log("Login Redirect - UID:", user.uid);
+    console.log("Login Redirect - Role:", role);
 
     try {
-      if (userData.role === ROLES.ADMIN) {
+      if (role === ROLES.ADMIN) {
+        // ADMINS: Always go to dashboard, skip profile checks
         navigate('/admin/dashboard');
       } else {
-        // Check if member profile exists for role: member, staff, manager (if not admin)
-        const orgId = userData.organizationId || 'default';
-        const member = await getMemberByUid(orgId, user.uid);
-        
-        if (!member) {
-          // If no member profile exists yet, redirect to onboarding
+        // MEMBERS/STAFF/MANAGERS: Check if member record exists
+        if (!profile) {
+          console.log("Login Redirect - No profile, forcing onboarding");
           navigate('/member/complete-profile');
         } else {
-          // Normal member flow
+          console.log("Login Redirect - Member dashboard");
           navigate('/member/dashboard');
         }
       }
     } catch (error) {
       console.error("Redirect error:", error);
-      // Absolute fallback to prevent login loop or blank screen
       navigate('/member/dashboard');
     }
   };

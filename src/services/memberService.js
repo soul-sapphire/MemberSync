@@ -97,27 +97,52 @@ export const getMemberByUid = async (arg1, arg2) => {
   const uid = arg2 || arg1;
   if (!uid) return null;
 
-  const directRef = doc(db, "members", uid);
-  const directSnap = await getDoc(directRef);
+  try {
+    let profile = null;
 
-  if (directSnap.exists()) {
-    return {
-      id: directSnap.id,
-      ...directSnap.data()
-    };
+    // 1. Try direct lookup by document ID (optimal)
+    const directRef = doc(db, MEMBERS_COLLECTION, uid);
+    const directSnap = await getDoc(directRef);
+
+    if (directSnap.exists()) {
+      profile = { id: directSnap.id, ...directSnap.data() };
+    } else {
+      // 2. Fallback to query by 'uid' field
+      const q = query(collection(db, MEMBERS_COLLECTION), where("uid", "==", uid));
+      const snap = await getDocs(q);
+
+      if (!snap.empty) {
+        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        // 3. Resolve conflicts: Prefer admin role, then active status
+        docs.sort((a, b) => {
+          const roleA = String(a.role || "").toLowerCase().trim();
+          const roleB = String(b.role || "").toLowerCase().trim();
+          const statusA = String(a.status || "").toLowerCase().trim();
+          const statusB = String(b.status || "").toLowerCase().trim();
+
+          if (roleA === "admin" && roleB !== "admin") return -1;
+          if (roleB === "admin" && roleA !== "admin") return 1;
+          if (statusA === "active" && statusB !== "active") return -1;
+          if (statusB === "active" && statusA !== "active") return 1;
+          return 0;
+        });
+        
+        profile = docs[0];
+      }
+    }
+
+    // 4. Normalize role/status
+    if (profile) {
+      profile.role = String(profile.role || "member").toLowerCase().trim();
+      profile.status = String(profile.status || "pending").toLowerCase().trim();
+    }
+
+    return profile;
+  } catch (error) {
+    console.error("Error in getMemberByUid:", error);
+    return null;
   }
-
-  const q = query(collection(db, "members"), where("uid", "==", uid));
-  const snap = await getDocs(q);
-
-  if (snap.empty) return null;
-
-  const d = snap.docs[0];
-
-  return {
-    id: d.id,
-    ...d.data()
-  };
 };
 
 /**

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { getUserData } from '../services/authService';
+import { getMemberByUid } from '../services/memberService';
 import { ROLES } from '../utils/roleCheck';
 
 const AuthContext = createContext();
@@ -16,18 +17,30 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      // CLEAR STALE STATE ON USER SWITCH
+      setUserRole(null);
+      setOrganizationId(null);
+      setLoading(true);
+
       if (user) {
+        console.log("Auth UID:", user.uid);
         setCurrentUser(user);
         try {
-          // SECURE: Always fetch the most up-to-date role from Firestore (source of truth)
-          const userData = await getUserData(user.uid);
+          // Fetch profile from members collection (robust source of truth for membership)
+          const profile = await getMemberByUid(user.uid);
           
-          if (userData) {
-            setUserRole(userData.role || ROLES.MEMBER);
-            setOrganizationId(userData.organizationId || 'default');
+          console.log("Loaded profile:", profile);
+          console.log("Loaded role:", profile?.role);
+          console.log("Loaded status:", profile?.status);
+
+          if (profile) {
+            setUserRole(profile.role || ROLES.MEMBER);
+            setOrganizationId(profile.organizationId || 'default');
           } else {
-            setUserRole(ROLES.MEMBER);
-            setOrganizationId('default');
+            // Fallback to basic user data if no member doc exists yet
+            const userData = await getUserData(user.uid);
+            setUserRole(userData?.role || ROLES.MEMBER);
+            setOrganizationId(userData?.organizationId || 'default');
           }
         } catch (e) {
           console.error("AuthContext Error:", e);
@@ -36,8 +49,6 @@ export const AuthProvider = ({ children }) => {
         }
       } else {
         setCurrentUser(null);
-        setUserRole(null);
-        setOrganizationId(null);
       }
       setLoading(false);
     });

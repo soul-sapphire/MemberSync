@@ -103,12 +103,12 @@ const Navbar = ({ onMenuClick, isAdmin }) => {
             {userRole === 'admin' ? (
               <>
                 <Crown size={10} className="text-brand-400" />
-                <span>Admin</span>
+                <span>ADMIN</span>
               </>
             ) : (
               <>
                 <User size={10} />
-                <span>Member</span>
+                <span>MEMBER</span>
               </>
             )}
           </div>
