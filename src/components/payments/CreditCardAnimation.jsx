@@ -151,9 +151,13 @@ const CreditCardAnimation = ({ amount, member, onPaymentSubmit }) => {
 
                         <div className="card-item__cover">
                             <img
-                                src={`/src/components/payments/assets/images/${currentCardBackground}.jpeg`}
+                                src={`/images/payment-cards/${currentCardBackground}.jpeg`}
                                 className="card-item__bg"
                                 alt=""
+                                onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    e.target.parentNode.style.background = 'linear-gradient(45deg, #1e293b, #334155)';
+                                }}
                             />
                         </div>
 
@@ -162,16 +166,18 @@ const CreditCardAnimation = ({ amount, member, onPaymentSubmit }) => {
                             <div className="card-item__top">
 
                                 <img
-                                    src="/src/components/payments/assets/images/chip.png"
+                                    src="/images/payment-cards/chip.png"
                                     className="card-item__chip"
                                     alt=""
+                                    onError={(e) => e.target.style.opacity = '0'}
                                 />
 
                                 <div className="card-item__type">
                                     <img
-                                        src={`/src/components/payments/assets/images/${cardType}.png`}
+                                        src={`/images/payment-cards/${cardType}.png`}
                                         className="card-item__typeImg"
                                         alt=""
+                                        onError={(e) => e.target.style.opacity = '0'}
                                     />
                                 </div>
 
@@ -206,9 +212,13 @@ const CreditCardAnimation = ({ amount, member, onPaymentSubmit }) => {
 
                         <div className="card-item__cover">
                             <img
-                                src={`/src/components/payments/assets/images/${currentCardBackground}.jpeg`}
+                                src={`/images/payment-cards/${currentCardBackground}.jpeg`}
                                 className="card-item__bg"
                                 alt=""
+                                onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    e.target.parentNode.style.background = 'linear-gradient(45deg, #1e293b, #334155)';
+                                }}
                             />
                         </div>
 
@@ -226,9 +236,10 @@ const CreditCardAnimation = ({ amount, member, onPaymentSubmit }) => {
 
                             <div className="card-item__type">
                                 <img
-                                    src={`/src/components/payments/assets/images/${cardType}.png`}
+                                    src={`/images/payment-cards/${cardType}.png`}
                                     className="card-item__typeImg"
                                     alt=""
+                                    onError={(e) => e.target.style.opacity = '0'}
                                 />
                             </div>
 
